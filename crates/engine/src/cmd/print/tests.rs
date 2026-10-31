@@ -632,3 +632,19 @@ fn furigana_and_cell_text_take_separate_parts_of_the_cell() {
         assert!(reading - text >= 9.9, "{align}: reading y {reading} and text y {text} share a strip");
     }
 }
+
+#[test]
+fn checkbox_cells_print_as_boxes_not_true_false() {
+    // #2972: a checkbox cell printed its value as TRUE or FALSE.
+    let mut s = s();
+    s.execute("insert.checkbox", json!({"range": "A1:A2"})).unwrap();
+    s.execute("cell.toggleCheckbox", json!({"cell": "A2"})).unwrap();
+    s.execute("cell.set", json!({"cell": "C1", "input": "TRUE"})).unwrap();
+    let (pdf, _) = pdf_of(&mut s, json!({}));
+    assert!(!contains(&pdf, "(FALSE) Tj"), "the unchecked box printed as FALSE");
+    // Only the plain TRUE in C1 prints as text; the checked box is a filled box.
+    let text = String::from_utf8_lossy(&pdf);
+    assert_eq!(text.matches("(TRUE) Tj").count(), 1, "the checked box printed as TRUE");
+    assert!(contains(&pdf, "0.063 0.486 0.255 rg"), "the checked box is not filled");
+    assert!(contains(&pdf, "0.431 0.431 0.431 RG"), "the unchecked box is not outlined");
+}
